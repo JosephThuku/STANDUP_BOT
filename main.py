@@ -1,6 +1,7 @@
 import os
 import discord
 import asyncio
+import random
 from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -15,7 +16,7 @@ intents = discord.Intents.default()
 intents.messages = True
 intents.guilds = True
 intents.message_content = True
-intents.members = True  # Needed for on_member_join
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 scheduler = AsyncIOScheduler()
@@ -23,11 +24,24 @@ scheduler = AsyncIOScheduler()
 user_responses = {}
 user_points = {}
 
+# Predefined list of motivational quotes
+quotes = [
+    "🌟 Believe you can and you're halfway there.",
+    "💪 Your limitation—it's only your imagination.",
+    "🚀 Push yourself, because no one else is going to do it for you.",
+    "🔥 Great things never come from comfort zones.",
+    "🌈 Dream it. Wish it. Do it.",
+    "🌻 Success doesn’t just find you. You have to go out and get it.",
+    "🏆 The harder you work for something, the greater you’ll feel when you achieve it.",
+]
+
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     scheduler.add_job(standup_reminder, "cron", hour=10, minute=0)
     scheduler.add_job(reminder_for_non_responders, "cron", hour=12, minute=0)
+    scheduler.add_job(send_motivational_quote, "cron", hour=9, minute=0)  # Morning quote
+    scheduler.add_job(send_motivational_quote, "cron", hour=21, minute=0)  # Night quote
     scheduler.start()
 
 @bot.event
@@ -57,9 +71,21 @@ async def on_message(message):
             await message.channel.send(f"✅ {message.author.mention}, thanks for your standup! You've earned 1 point. Total: {user_points[message.author.id]} 🏅")
 
     if bot.user in message.mentions:
-        await message.channel.send("👋 Hey there! I'm your daily standup bot. Use `!quiz` to learn how I work!")
+        await message.channel.send("👋 Hey there! I'm your daily standup bot. Use `!howitworks` to learn how I work!")
 
     await bot.process_commands(message)
+
+@bot.command(name="howitworks")
+async def how_it_works(ctx):
+    explanation = (
+        "🤖 **How I Work:**\n"
+        "1. **Daily Standup:** Every day at 10 AM, I'll ask you what you worked on yesterday, what you'll work on today, and if you have any blockers.\n"
+        "2. **Points System:** Reply within 2 hours to earn points!\n"
+        "3. **Leaderboard:** Use `!leaderboard` to check how you stack up against your teammates.\n"
+        "4. **Feedback:** You can give feedback on the standup process with `!feedback <your thoughts>`.\n"
+        "5. **Fun Features:** Participate in polls and quizzes to make it more engaging!"
+    )
+    await ctx.send(explanation)
 
 @bot.command(name="quiz")
 async def quiz(ctx):
@@ -112,5 +138,29 @@ async def reminder_for_non_responders():
 async def check_points(ctx):
     points = user_points.get(ctx.author.id, 0)
     await ctx.send(f"🏆 {ctx.author.mention}, you have {points} standup points!")
+
+@bot.command(name="leaderboard")
+async def leaderboard(ctx):
+    sorted_users = sorted(user_points.items(), key=lambda x: x[1], reverse=True)
+    leaderboard_message = "🏆 **Leaderboard**\n" + "\n".join(
+        [f"<@{user_id}>: {points} points" for user_id, points in sorted_users]
+    )
+    await ctx.send(leaderboard_message)
+
+@bot.command(name="feedback")
+async def feedback(ctx, *, feedback_text: str):
+    await ctx.send("✅ Thanks for your feedback!")
+
+async def send_motivational_quote():
+    channel = bot.get_channel(CHANNEL_ID)
+    guild = bot.get_guild(GUILD_ID)
+    if channel and guild:
+        quote = random.choice(quotes)
+        team_mention = " ".join([m.mention for m in guild.members if not m.bot])  # Mentions all users
+        server_name = guild.name
+        await channel.send(f"🌅 Good morning @everyone! {quote} - from {server_name}")
+        
+        # Evening quote
+        await channel.send(f"🌜 Good evening @everyone! {quote} - from {server_name}")
 
 bot.run(TOKEN)
