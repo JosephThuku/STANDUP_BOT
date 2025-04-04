@@ -156,11 +156,7 @@ async def send_motivational_quote():
     guild = bot.get_guild(GUILD_ID)
     if channel and guild:
         quote = random.choice(quotes)
-        team_mention = " ".join([m.mention for m in guild.members if not m.bot])  # Mentions all users
-        server_name = guild.name
-        await channel.send(f"🌅 Good morning @everyone! {quote} - from {server_name}")
-        
-        # Evening quote
-        await channel.send(f"🌜 Good evening @everyone! {quote} - from {server_name}")
+        await channel.send(f"🌅 Good morning @everyone! {quote}")
+        await channel.send(f"🌜 Good evening @everyone! {quote}")
 
 bot.run(TOKEN)
